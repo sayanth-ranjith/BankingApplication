@@ -93,6 +93,19 @@ public class BankOperationController {
 
 
     //TODO: API for depositing cash
+    @GetMapping("/deposit/{accountNumber}/{amount}")
+    public ResponseEntity<?> depositCash(@PathVariable String accountNumber,@PathVariable float amount){
+        List<CustomerAccount> account = getAccountDetailsByAccountNumber(accountNumber);
+        if(account.isEmpty()){
+            throw new AccountNotFoundException("Not found");
+        }
+        String currentBalance = account.get(0).getAccountBalance();
+        float balance = Float.parseFloat(currentBalance);
+        float newBalance = balance + amount;
+        account.get(0).setAccountBalance(String.valueOf(newBalance));
+        bankAccountDetails.save(account.get(0));
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
     //TODO:API to check balance
 }
