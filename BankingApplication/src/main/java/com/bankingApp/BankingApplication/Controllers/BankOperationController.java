@@ -19,7 +19,7 @@ import java.util.List;
  * Usually updation is unavailable so updation should be available only if user is an admin.
  */
 @RestController
-@RequestMapping("/bank")
+@RequestMapping("/api/v1")
 public class BankOperationController {
 
     @Autowired
