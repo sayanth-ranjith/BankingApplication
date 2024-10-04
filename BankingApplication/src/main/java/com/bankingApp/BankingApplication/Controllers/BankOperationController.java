@@ -2,16 +2,23 @@ package com.bankingApp.BankingApplication.Controllers;
 
 import com.bankingApp.BankingApplication.DTO.CreateCustomer;
 import com.bankingApp.BankingApplication.Entity.CustomerAccount;
+import com.bankingApp.BankingApplication.Entity.TransactionHistory;
 import com.bankingApp.BankingApplication.ExceptionHandling.AccountNotFoundException;
 import com.bankingApp.BankingApplication.ExceptionHandling.InsufficientFundException;
 import com.bankingApp.BankingApplication.Service.BankAccountDetails;
+import com.bankingApp.BankingApplication.Service.TransactionHistoryTableService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * This will be a major controller.
@@ -24,6 +31,16 @@ public class BankOperationController {
 
     @Autowired
     BankAccountDetails bankAccountDetails;
+
+    @Autowired
+    TransactionHistoryTableService transactionHistoryTableService;
+
+    Logger logger = LoggerFactory.getLogger(BankOperationController.class);
+
+    private static final String withdrawal ="WITHDRAWAL";
+    private static final String deposit = "DEPOSIT";
+
+
 
     @PostMapping("/createAccount")
     public ResponseEntity<?> createBankAccount(@RequestBody @Valid CreateCustomer customer){
@@ -75,6 +92,8 @@ public class BankOperationController {
             String accountBalance = customer.getAccountBalance();
             float currentBalance = Float.parseFloat(accountBalance);
             if(requestedAmount > currentBalance){
+                ResponseEntity<?> respEntity=saveTransactionHistory(customer,"FAILURE",withdrawal,String.valueOf(requestedAmount),"self",transactionHistoryTableService);
+                logger.info(Objects.requireNonNull(respEntity.getBody()).toString());
                 throw new InsufficientFundException("Not allowed");
             }
             float newBalance = currentBalance - requestedAmount;
@@ -86,17 +105,21 @@ public class BankOperationController {
 
     }
 
+    @Transactional
     public List<CustomerAccount> getAccountDetailsByAccountNumber(String accountNumber){
-        return bankAccountDetails.findAllByAccountNumber(accountNumber);
+        List<CustomerAccount> details= bankAccountDetails.findAllByAccountNumber(accountNumber);
+        //logger.info(details.get(0).toString());
+        return details;
     }
 
 
 
     //TODO: API for depositing cash
-    @GetMapping("/deposit/{accountNumber}/{amount}")
+    @PostMapping("/deposit/{accountNumber}/{amount}")
     public ResponseEntity<?> depositCash(@PathVariable String accountNumber,@PathVariable float amount){
         List<CustomerAccount> account = getAccountDetailsByAccountNumber(accountNumber);
         if(account.isEmpty()){
+            saveTransactionHistory(account.get(0),"FAILURE", deposit, String.valueOf(amount), "self", transactionHistoryTableService);
             throw new AccountNotFoundException("Not found");
         }
         String currentBalance = account.get(0).getAccountBalance();
@@ -105,6 +128,22 @@ public class BankOperationController {
         account.get(0).setAccountBalance(String.valueOf(newBalance));
         bankAccountDetails.save(account.get(0));
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    public static ResponseEntity<?> saveTransactionHistory(CustomerAccount customer,String status,String transactionType,String requestedAmount,String toAccount,TransactionHistoryTableService transactionHistoryTableService){
+        TransactionHistory history = new TransactionHistory();
+        UUID id = UUID.randomUUID();
+        history.setTransactionId(id.toString());
+        //history.setCustomerAccount(customer);
+        history.setTransactionType(transactionType);
+        history.setAmount(requestedAmount);
+        history.setBalanceAfter(customer.getAccountBalance());
+        history.setStatus(status);
+        history.setFromAccount(customer.getAccountNumber());
+        history.setToAccount(toAccount);
+        transactionHistoryTableService.save(history);
+
+        return new ResponseEntity<>("Saved into transaction history table",HttpStatus.OK);
     }
 
     //TODO:API to check balance

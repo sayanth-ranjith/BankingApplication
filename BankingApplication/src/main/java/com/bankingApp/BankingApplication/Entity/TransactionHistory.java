@@ -1,5 +1,7 @@
 package com.bankingApp.BankingApplication.Entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,10 +19,11 @@ public class TransactionHistory {
 
     @Id
     @Column(name = "transaction_id")
-    private int transactionId;
+    private String transactionId;
 
-    @Column(name = "account_number")
-    private String accountNumber;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "account_number", nullable = false)
+    private CustomerAccount customerAccount;
 
     @Column(name = "transaction_type")
     private String transactionType;
@@ -31,8 +34,8 @@ public class TransactionHistory {
     @Column(name = "balance_after")
     private String balanceAfter;
 
-//    @Column(name="status")
-//    private String status;
+    @Column(name="status")
+    private String status;
 
     @Column(name="from_account_id")
     private String fromAccount;

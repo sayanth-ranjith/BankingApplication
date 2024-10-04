@@ -4,6 +4,7 @@ Great job on building the basic banking app! Here are some ideas to add more com
 Feature: Track all transactions (withdrawals, deposits, transfers) made by a customer.
 Database: Create a transactions table with fields like transaction ID, account number, transaction type (withdrawal, deposit, transfer), amount, timestamp, etc.
 API: Create an API to get a customer's transaction history, with filters for date range, transaction type, etc.
+!* Try and implement MapStruct to reduce get and set in this project to get hands on.*!
 
 2. Money Transfers:
 Feature: Implement money transfers between two accounts within the same bank or even between different banks.
