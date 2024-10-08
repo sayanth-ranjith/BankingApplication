@@ -6,8 +6,10 @@ import com.bankingApp.BankingApplication.Entity.TransactionHistory;
 import com.bankingApp.BankingApplication.ExceptionHandling.AccountNotFoundException;
 import com.bankingApp.BankingApplication.ExceptionHandling.InsufficientFundException;
 import com.bankingApp.BankingApplication.Service.BankAccountDetails;
+import com.bankingApp.BankingApplication.Service.BankOperationService;
 import com.bankingApp.BankingApplication.Service.TransactionHistoryTableService;
 import jakarta.validation.Valid;
+import org.hibernate.Hibernate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,9 @@ public class BankOperationController {
 
     private static final String withdrawal ="WITHDRAWAL";
     private static final String deposit = "DEPOSIT";
+
+    @Autowired
+    BankOperationService bankOperationService;
 
 
 
@@ -88,26 +93,16 @@ public class BankOperationController {
         if(customerDetail.isEmpty()){
             throw new AccountNotFoundException("Not found");
         }
-        for(CustomerAccount customer : customerDetail){
-            String accountBalance = customer.getAccountBalance();
-            float currentBalance = Float.parseFloat(accountBalance);
-            if(requestedAmount > currentBalance){
-                ResponseEntity<?> respEntity=saveTransactionHistory(customer,"FAILURE",withdrawal,String.valueOf(requestedAmount),"self",transactionHistoryTableService);
-                logger.info(Objects.requireNonNull(respEntity.getBody()).toString());
-                throw new InsufficientFundException("Not allowed");
-            }
-            float newBalance = currentBalance - requestedAmount;
-            //TODO:Update the new balance in db.
-            customer.setAccountBalance(Float.toString(newBalance));
-            bankAccountDetails.save(customer);
-        }
-        return new ResponseEntity<>(HttpStatus.OK);
+        logger.info("Processing withdrawal request for account number " + accountNumber);
+        return bankOperationService.withdraw(customerDetail,requestedAmount);
 
     }
 
     @Transactional
     public List<CustomerAccount> getAccountDetailsByAccountNumber(String accountNumber){
         List<CustomerAccount> details= bankAccountDetails.findAllByAccountNumber(accountNumber);
+        Hibernate.initialize(details.get(0).getTransactionHistory()); // Force initialization
+
         //logger.info(details.get(0).toString());
         return details;
     }
@@ -119,7 +114,6 @@ public class BankOperationController {
     public ResponseEntity<?> depositCash(@PathVariable String accountNumber,@PathVariable float amount){
         List<CustomerAccount> account = getAccountDetailsByAccountNumber(accountNumber);
         if(account.isEmpty()){
-            saveTransactionHistory(account.get(0),"FAILURE", deposit, String.valueOf(amount), "self", transactionHistoryTableService);
             throw new AccountNotFoundException("Not found");
         }
         String currentBalance = account.get(0).getAccountBalance();
@@ -127,6 +121,7 @@ public class BankOperationController {
         float newBalance = balance + amount;
         account.get(0).setAccountBalance(String.valueOf(newBalance));
         bankAccountDetails.save(account.get(0));
+        saveTransactionHistory(account.get(0), "SUCCESS", deposit, String.valueOf(amount), "self", transactionHistoryTableService);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
@@ -134,7 +129,7 @@ public class BankOperationController {
         TransactionHistory history = new TransactionHistory();
         UUID id = UUID.randomUUID();
         history.setTransactionId(id.toString());
-        //history.setCustomerAccount(customer);
+        history.setCustomerAccount(customer);
         history.setTransactionType(transactionType);
         history.setAmount(requestedAmount);
         history.setBalanceAfter(customer.getAccountBalance());
