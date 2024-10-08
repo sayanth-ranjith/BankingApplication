@@ -116,13 +116,7 @@ public class BankOperationController {
         if(account.isEmpty()){
             throw new AccountNotFoundException("Not found");
         }
-        String currentBalance = account.get(0).getAccountBalance();
-        float balance = Float.parseFloat(currentBalance);
-        float newBalance = balance + amount;
-        account.get(0).setAccountBalance(String.valueOf(newBalance));
-        bankAccountDetails.save(account.get(0));
-        saveTransactionHistory(account.get(0), "SUCCESS", deposit, String.valueOf(amount), "self", transactionHistoryTableService);
-        return new ResponseEntity<>(HttpStatus.OK);
+        return bankOperationService.deposit(account, amount);
     }
 
     public static ResponseEntity<?> saveTransactionHistory(CustomerAccount customer,String status,String transactionType,String requestedAmount,String toAccount,TransactionHistoryTableService transactionHistoryTableService){

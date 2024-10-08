@@ -53,5 +53,17 @@ public class BankOperationServiceImpl implements BankOperationService {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @Override
+    @Transactional
+    public ResponseEntity<?> deposit(List<CustomerAccount> customerAccount, float amount) {
+        String currentBalance = customerAccount.get(0).getAccountBalance();
+        float balance = Float.parseFloat(currentBalance);
+        float newBalance = balance + amount;
+        customerAccount.get(0).setAccountBalance(String.valueOf(newBalance));
+        bankAccountDetails.save(customerAccount.get(0));
+        BankOperationController.saveTransactionHistory(customerAccount.get(0), "SUCCESS", deposit, String.valueOf(amount), "self", transactionHistoryTableService);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
 
 }

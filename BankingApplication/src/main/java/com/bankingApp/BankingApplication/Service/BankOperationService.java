@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface BankOperationService {
     ResponseEntity<?> withdraw(List<CustomerAccount> customerAccount,float amount);
+
+    ResponseEntity<?> deposit(List<CustomerAccount> customerAccount, float amount);
 }
