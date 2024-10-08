@@ -1,12 +1,12 @@
 package com.bankingApp.BankingApplication.Entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.*;
 
 @Data
 @AllArgsConstructor
@@ -42,4 +42,9 @@ public class CustomerAccount {
 
     @Column(name = "type_of_account", nullable = false)
     private String typeOfAccount;
+
+    @OneToMany(mappedBy = "customerAccount", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JsonIgnore
+    private List<TransactionHistory> transactionHistory;
+
 }
