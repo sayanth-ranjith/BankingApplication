@@ -55,7 +55,7 @@ public class BankOperationServiceImpl implements BankOperationService {
 
     @Override
     @Transactional
-    public ResponseEntity<?> deposit(List<CustomerAccount> customerAccount, float amount) {
+    public synchronized ResponseEntity<?> deposit(List<CustomerAccount> customerAccount, float amount) {
         String currentBalance = customerAccount.get(0).getAccountBalance();
         float balance = Float.parseFloat(currentBalance);
         float newBalance = balance + amount;

@@ -6,13 +6,16 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "transaction_history_table")
 @Data
+@ToString(exclude = "customerAccount")
 @AllArgsConstructor
 @NoArgsConstructor
 public class TransactionHistory {
