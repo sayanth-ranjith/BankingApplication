@@ -1,6 +1,7 @@
 package com.bankingApp.BankingApplication.Controllers;
 
 import com.bankingApp.BankingApplication.DTO.CreateCustomer;
+import com.bankingApp.BankingApplication.DTO.TransferRequest;
 import com.bankingApp.BankingApplication.Entity.CustomerAccount;
 import com.bankingApp.BankingApplication.Entity.TransactionHistory;
 import com.bankingApp.BankingApplication.ExceptionHandling.AccountNotFoundException;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * This will be a major controller.
@@ -75,6 +77,7 @@ public class BankOperationController {
     public ResponseEntity<?> getDetails(@PathVariable String accountNumber) {
         try {
             List<CustomerAccount> accountDetails = getAccountDetailsByAccountNumber(accountNumber);
+            logger.info(accountDetails.get(0).getTransactionHistory().toString());
             if(accountDetails.size()==0){
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
@@ -117,6 +120,19 @@ public class BankOperationController {
             throw new AccountNotFoundException("Not found");
         }
         return bankOperationService.deposit(account, amount);
+    }
+
+    @PostMapping("/transferMoney")
+    public ResponseEntity<?> transferMoney(@RequestBody TransferRequest transferRequest){
+        logger.info("Request received for transfering money  "+ transferRequest);
+        List<CustomerAccount> fromAccountDetails = getAccountDetailsByAccountNumber(transferRequest.fromAccount());
+        List<CustomerAccount> toAccountDetails = getAccountDetailsByAccountNumber(transferRequest.toAccount());
+        if(fromAccountDetails.isEmpty() || toAccountDetails.isEmpty()){
+            logger.info("Bad request, one probably receiver or senders account number is invalid.");
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        bankOperationService.transferMoney(fromAccountDetails,toAccountDetails,transferRequest.amount());
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     public static ResponseEntity<?> saveTransactionHistory(CustomerAccount customer,String status,String transactionType,String requestedAmount,String toAccount,TransactionHistoryTableService transactionHistoryTableService){
