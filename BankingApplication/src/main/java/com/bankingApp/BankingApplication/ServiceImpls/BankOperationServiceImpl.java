@@ -2,7 +2,6 @@ package com.bankingApp.BankingApplication.ServiceImpls;
 
 import com.bankingApp.BankingApplication.Controllers.BankOperationController;
 import com.bankingApp.BankingApplication.Entity.CustomerAccount;
-import com.bankingApp.BankingApplication.Entity.TransactionHistory;
 import com.bankingApp.BankingApplication.ExceptionHandling.InsufficientFundException;
 import com.bankingApp.BankingApplication.Service.BankAccountDetails;
 import com.bankingApp.BankingApplication.Service.BankOperationService;
@@ -13,12 +12,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Repository
 public class BankOperationServiceImpl implements BankOperationService {
@@ -32,6 +30,8 @@ public class BankOperationServiceImpl implements BankOperationService {
 
     private static final String withdrawal ="WITHDRAWAL";
     private static final String deposit = "DEPOSIT";
+
+    private final ReentrantLock lock = new ReentrantLock();
 
     @Override
     @Transactional
@@ -63,6 +63,30 @@ public class BankOperationServiceImpl implements BankOperationService {
         bankAccountDetails.save(customerAccount.get(0));
         BankOperationController.saveTransactionHistory(customerAccount.get(0), "SUCCESS", deposit, String.valueOf(amount), "self", transactionHistoryTableService);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @Override
+    public ResponseEntity<?> transferMoney(List<CustomerAccount> fromAccountDetails, List<CustomerAccount> toAccountDetails, float amount) {
+
+        try {
+            var withDrawMsg = "Transfer of %s from %s to %s is processing..."
+                    .formatted(amount, fromAccountDetails.get(0).getAccountNumber(), toAccountDetails.get(0).getAccountNumber());
+            logger.info(withDrawMsg);
+            this.withdraw(fromAccountDetails, amount);
+
+            var depositMsg = "Depositing money into the receiver %s account during transfer...."
+                    .formatted(toAccountDetails.get(0).getAccountNumber());
+            this.deposit(toAccountDetails, amount);
+
+            var finalMsg = "Transfer successful from %s to %s".formatted(fromAccountDetails.get(0).getAccountNumber(), toAccountDetails.get(0).getAccountNumber());
+            logger.info(finalMsg);
+
+            //TODO: add history,transaction histroy.
+            return new ResponseEntity<>(HttpStatus.OK);
+        }catch (Exception e){
+            logger.error("Something went wrong during transaction from "+ fromAccountDetails.get(0).getAccountNumber() + "to " +fromAccountDetails.get(0).getAccountNumber());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
 
