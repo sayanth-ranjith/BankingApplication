@@ -35,22 +35,30 @@ public class BankOperationServiceImpl implements BankOperationService {
 
     @Override
     @Transactional
-    public synchronized ResponseEntity<?> withdraw(List<CustomerAccount> customerAccount,float requestedAmount) {
-        for(CustomerAccount customer : customerAccount){
-            String accountBalance = customer.getAccountBalance();
-            float currentBalance = Float.parseFloat(accountBalance);
-            if(requestedAmount > currentBalance){
-                ResponseEntity<?> respEntity=BankOperationController.saveTransactionHistory(customer,"FAILURE",withdrawal,String.valueOf(requestedAmount),"self",transactionHistoryTableService);
-                logger.info(Objects.requireNonNull(respEntity.getBody()).toString());
-                throw new InsufficientFundException("Not allowed");
+    public ResponseEntity<?> withdraw(List<CustomerAccount> customerAccount,float requestedAmount,ReentrantLock lock) {
+        try {
+            lock.lock();
+            for (CustomerAccount customer : customerAccount) {
+                String accountBalance = customer.getAccountBalance();
+                float currentBalance = Float.parseFloat(accountBalance);
+                if (requestedAmount > currentBalance) {
+                    ResponseEntity<?> respEntity = BankOperationController.saveTransactionHistory(customer, "FAILURE", withdrawal, String.valueOf(requestedAmount), "self", transactionHistoryTableService);
+                    logger.info(Objects.requireNonNull(respEntity.getBody()).toString());
+                    throw new InsufficientFundException("Not allowed");
+                }
+                float newBalance = currentBalance - requestedAmount;
+                //TODO:Update the new balance in db.
+                customer.setAccountBalance(Float.toString(newBalance));
+                bankAccountDetails.save(customer);
+                ResponseEntity<?> respEntity = BankOperationController.saveTransactionHistory(customer, "SUCCESS", withdrawal, String.valueOf(requestedAmount), "self", transactionHistoryTableService);
             }
-            float newBalance = currentBalance - requestedAmount;
-            //TODO:Update the new balance in db.
-            customer.setAccountBalance(Float.toString(newBalance));
-            bankAccountDetails.save(customer);
-            ResponseEntity<?> respEntity = BankOperationController.saveTransactionHistory(customer, "SUCCESS", withdrawal, String.valueOf(requestedAmount), "self", transactionHistoryTableService);
+            return new ResponseEntity<>(HttpStatus.OK);
+        }catch (Exception e){
+            logger.info("Some exception occured while withdrawing money " + e + "lock released by thread " + Thread.currentThread().getName());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }finally {
+            lock.unlock();
         }
-        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @Override
@@ -67,12 +75,12 @@ public class BankOperationServiceImpl implements BankOperationService {
 
     @Override
     public ResponseEntity<?> transferMoney(List<CustomerAccount> fromAccountDetails, List<CustomerAccount> toAccountDetails, float amount) {
-
+        ReentrantLock lock = new ReentrantLock();
         try {
             var withDrawMsg = "Transfer of %s from %s to %s is processing..."
                     .formatted(amount, fromAccountDetails.get(0).getAccountNumber(), toAccountDetails.get(0).getAccountNumber());
             logger.info(withDrawMsg);
-            this.withdraw(fromAccountDetails, amount);
+            this.withdraw(fromAccountDetails, amount,lock);
 
             var depositMsg = "Depositing money into the receiver %s account during transfer...."
                     .formatted(toAccountDetails.get(0).getAccountNumber());
