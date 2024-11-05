@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This will be a major controller.
@@ -92,19 +93,22 @@ public class BankOperationController {
     //TODO API for withdrawing cash
     @PostMapping("/withDrawals/{accountNumber}/{requestedAmount}")
     public ResponseEntity<?> withDrawCash(@PathVariable String accountNumber,@PathVariable  float requestedAmount){
+
+        ReentrantLock lock = new ReentrantLock();
+
         List<CustomerAccount> customerDetail = getAccountDetailsByAccountNumber(accountNumber);
         if(customerDetail.isEmpty()){
             throw new AccountNotFoundException("Not found");
         }
         logger.info("Processing withdrawal request for account number " + accountNumber);
-        return bankOperationService.withdraw(customerDetail,requestedAmount);
+        return bankOperationService.withdraw(customerDetail,requestedAmount,lock);
 
     }
 
     @Transactional
     public List<CustomerAccount> getAccountDetailsByAccountNumber(String accountNumber){
         List<CustomerAccount> details= bankAccountDetails.findAllByAccountNumber(accountNumber);
-        Hibernate.initialize(details.get(0).getTransactionHistory()); // Force initialization
+        //Hibernate.initialize(details.get(0).getTransactionHistory()); // Force initialization
 
         //logger.info(details.get(0).toString());
         return details;
