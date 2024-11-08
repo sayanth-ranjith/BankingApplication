@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -47,6 +47,10 @@ public class BankOperationController {
 
     @Autowired
     BankOperationService bankOperationService;
+
+    ReentrantLock lock = new ReentrantLock();
+
+    ExecutorService executors = Executors.newCachedThreadPool();
 
 
 
@@ -92,16 +96,23 @@ public class BankOperationController {
 
     //TODO API for withdrawing cash
     @PostMapping("/withDrawals/{accountNumber}/{requestedAmount}")
-    public ResponseEntity<?> withDrawCash(@PathVariable String accountNumber,@PathVariable  float requestedAmount){
+    public ResponseEntity<?> withDrawCash(@PathVariable String accountNumber,@PathVariable  float requestedAmount) throws ExecutionException, InterruptedException {
 
-        ReentrantLock lock = new ReentrantLock();
+        Callable<ResponseEntity<?>> callable = ()->{
+            List<CustomerAccount> customerDetail = getAccountDetailsByAccountNumber(accountNumber);
+            if(customerDetail.isEmpty()){
+                throw new AccountNotFoundException("Not found");
+            }
+            logger.info("Processing withdrawal request for account number " + accountNumber);
+            return bankOperationService.withdraw(customerDetail,requestedAmount,lock);
+        };
 
-        List<CustomerAccount> customerDetail = getAccountDetailsByAccountNumber(accountNumber);
-        if(customerDetail.isEmpty()){
-            throw new AccountNotFoundException("Not found");
+        Future<ResponseEntity<?>> future =executors.submit(callable);
+        if(future.isDone()) {
+            executors.shutdown();
         }
-        logger.info("Processing withdrawal request for account number " + accountNumber);
-        return bankOperationService.withdraw(customerDetail,requestedAmount,lock);
+
+        return future.get();
 
     }
 
