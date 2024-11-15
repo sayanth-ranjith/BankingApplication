@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -32,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @RestController
 @RequestMapping("/api/v1")
+@CrossOrigin(origins = "*")
 public class BankOperationController {
 
     @Autowired
@@ -107,12 +109,16 @@ public class BankOperationController {
             return bankOperationService.withdraw(customerDetail,requestedAmount,lock);
         };
 
+        Runnable run =  ()->{
+            System.out.println("Helloworld");
+        };
+
         Future<ResponseEntity<?>> future =executors.submit(callable);
-        if(future.isDone()) {
+        try {
+            return future.get();
+        } finally {
             executors.shutdown();
         }
-
-        return future.get();
 
     }
 
@@ -138,6 +144,7 @@ public class BankOperationController {
     }
 
     @PostMapping("/transferMoney")
+    //TODO:Transaction history for this api has to be redesigned.
     public ResponseEntity<?> transferMoney(@RequestBody TransferRequest transferRequest){
         logger.info("Request received for transfering money  "+ transferRequest);
         List<CustomerAccount> fromAccountDetails = getAccountDetailsByAccountNumber(transferRequest.fromAccount());
