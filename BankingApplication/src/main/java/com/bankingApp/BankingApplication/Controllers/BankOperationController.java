@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -32,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @RestController
 @RequestMapping("/api/v1")
+@CrossOrigin(origins = "*")
 public class BankOperationController {
 
     @Autowired
@@ -81,8 +83,9 @@ public class BankOperationController {
     @GetMapping("/getDetails/{accountNumber}")
     public ResponseEntity<?> getDetails(@PathVariable String accountNumber) {
         try {
+            Thread.sleep(5000);
             List<CustomerAccount> accountDetails = getAccountDetailsByAccountNumber(accountNumber);
-            logger.info(accountDetails.get(0).getTransactionHistory().toString());
+            //logger.info(accountDetails.get(0).getTransactionHistory().toString());
             if(accountDetails.size()==0){
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
@@ -94,7 +97,7 @@ public class BankOperationController {
     }
 
 
-    //TODO API for withdrawing cash
+
     @PostMapping("/withDrawals/{accountNumber}/{requestedAmount}")
     public ResponseEntity<?> withDrawCash(@PathVariable String accountNumber,@PathVariable  float requestedAmount) throws ExecutionException, InterruptedException {
 
@@ -106,13 +109,12 @@ public class BankOperationController {
             logger.info("Processing withdrawal request for account number " + accountNumber);
             return bankOperationService.withdraw(customerDetail,requestedAmount,lock);
         };
-
         Future<ResponseEntity<?>> future =executors.submit(callable);
-        if(future.isDone()) {
+        try {
+            return future.get();
+        } finally {
             executors.shutdown();
         }
-
-        return future.get();
 
     }
 
@@ -127,7 +129,7 @@ public class BankOperationController {
 
 
 
-    //TODO: API for depositing cash
+
     @PostMapping("/deposit/{accountNumber}/{amount}")
     public ResponseEntity<?> depositCash(@PathVariable String accountNumber,@PathVariable float amount){
         List<CustomerAccount> account = getAccountDetailsByAccountNumber(accountNumber);
@@ -138,6 +140,7 @@ public class BankOperationController {
     }
 
     @PostMapping("/transferMoney")
+    //TODO:Transaction history for this api has to be redesigned.
     public ResponseEntity<?> transferMoney(@RequestBody TransferRequest transferRequest){
         logger.info("Request received for transfering money  "+ transferRequest);
         List<CustomerAccount> fromAccountDetails = getAccountDetailsByAccountNumber(transferRequest.fromAccount());
