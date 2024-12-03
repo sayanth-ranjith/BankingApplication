@@ -83,8 +83,9 @@ public class BankOperationController {
     @GetMapping("/getDetails/{accountNumber}")
     public ResponseEntity<?> getDetails(@PathVariable String accountNumber) {
         try {
+            Thread.sleep(5000);
             List<CustomerAccount> accountDetails = getAccountDetailsByAccountNumber(accountNumber);
-            logger.info(accountDetails.get(0).getTransactionHistory().toString());
+            //logger.info(accountDetails.get(0).getTransactionHistory().toString());
             if(accountDetails.size()==0){
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
@@ -96,7 +97,7 @@ public class BankOperationController {
     }
 
 
-    //TODO API for withdrawing cash
+
     @PostMapping("/withDrawals/{accountNumber}/{requestedAmount}")
     public ResponseEntity<?> withDrawCash(@PathVariable String accountNumber,@PathVariable  float requestedAmount) throws ExecutionException, InterruptedException {
 
@@ -108,11 +109,6 @@ public class BankOperationController {
             logger.info("Processing withdrawal request for account number " + accountNumber);
             return bankOperationService.withdraw(customerDetail,requestedAmount,lock);
         };
-
-        Runnable run =  ()->{
-            System.out.println("Helloworld");
-        };
-
         Future<ResponseEntity<?>> future =executors.submit(callable);
         try {
             return future.get();
@@ -133,7 +129,7 @@ public class BankOperationController {
 
 
 
-    //TODO: API for depositing cash
+
     @PostMapping("/deposit/{accountNumber}/{amount}")
     public ResponseEntity<?> depositCash(@PathVariable String accountNumber,@PathVariable float amount){
         List<CustomerAccount> account = getAccountDetailsByAccountNumber(accountNumber);
