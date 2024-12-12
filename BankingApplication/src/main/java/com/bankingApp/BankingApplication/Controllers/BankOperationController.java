@@ -83,7 +83,6 @@ public class BankOperationController {
     @GetMapping("/getDetails/{accountNumber}")
     public ResponseEntity<?> getDetails(@PathVariable String accountNumber) {
         try {
-            Thread.sleep(5000);
             List<CustomerAccount> accountDetails = getAccountDetailsByAccountNumber(accountNumber);
             //logger.info(accountDetails.get(0).getTransactionHistory().toString());
             if(accountDetails.size()==0){
